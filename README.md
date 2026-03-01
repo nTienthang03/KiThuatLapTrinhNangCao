@@ -1,4 +1,3 @@
-# KiThuatLapTrinhNangCao
 # Tối ưu lịch thi (MSSQL + Python + HTML)
 
 ## 1) Chuẩn bị database
@@ -32,3 +31,8 @@ python app.py
 - Mở: http://127.0.0.1:5000
 - Bấm **Tối ưu** để tạo lại lịch thi từ bảng `DangKy`.
 
+## Thuật toán
+Greedy đơn giản:
+- Xếp môn có nhiều SV trước
+- Chọn ca sớm nhất thoả không xung đột SV và đủ sức chứa phòng rảnh
+- Chia SV theo nhiều phòng trong cùng ca

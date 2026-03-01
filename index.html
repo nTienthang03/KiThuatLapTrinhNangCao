@@ -1,0 +1,525 @@
+<!doctype html>
+<html lang="vi">
+<!-- REBUILT WITH TABS: Lịch thi | Chi tiết phòng | Lịch theo SV -->
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Tối ưu lịch thi</title>
+  <style>
+    :root {
+      --primary: #2563eb;
+      --primary-dark: #1d4ed8;
+      --primary-light: #dbeafe;
+      --success: #16a34a;
+      --success-light: #dcfce7;
+      --warning: #d97706;
+      --warning-light: #fef3c7;
+      --danger: #dc2626;
+      --danger-light: #fef2f2;
+      --gray-50: #f9fafb;
+      --gray-100: #f3f4f6;
+      --gray-200: #e5e7eb;
+      --gray-300: #d1d5db;
+      --gray-500: #6b7280;
+      --gray-700: #374151;
+      --gray-900: #111827;
+      --radius: 12px;
+      --shadow: 0 1px 3px rgba(0,0,0,.08), 0 1px 2px rgba(0,0,0,.04);
+      --shadow-md: 0 4px 6px -1px rgba(0,0,0,.08), 0 2px 4px -2px rgba(0,0,0,.05);
+    }
+
+    /* ---- Tabs ---- */
+    .tabs { display: flex; gap: 4px; margin-bottom: 0; border-bottom: 2px solid var(--gray-200); }
+    .tab-btn {
+      padding: 11px 22px; border: none; background: transparent;
+      font-size: 14px; font-weight: 500; color: var(--gray-500);
+      cursor: pointer; border-radius: 8px 8px 0 0; transition: all .15s;
+      position: relative; bottom: -2px; border-bottom: 2px solid transparent;
+    }
+    .tab-btn:hover { color: var(--primary); background: var(--primary-light); }
+    .tab-btn.active { color: var(--primary); font-weight: 600; border-bottom-color: var(--primary); background: #fff; }
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* ---- Capacity bar ---- */
+    .cap-wrap { display: flex; align-items: center; gap: 8px; min-width: 120px; }
+    .cap-bar { flex: 1; height: 8px; background: var(--gray-200); border-radius: 4px; overflow: hidden; }
+    .cap-fill { height: 100%; border-radius: 4px; background: var(--primary); transition: width .3s; }
+    .cap-fill.warn { background: var(--warning); }
+    .cap-fill.full { background: var(--danger); }
+    .cap-text { font-size: 12px; white-space: nowrap; color: var(--gray-700); min-width: 52px; }
+
+    /* ---- Badge ---- */
+    .badge {
+      display: inline-flex; align-items: center; gap: 4px;
+      padding: 2px 9px; border-radius: 99px; font-size: 12px; font-weight: 600; white-space: nowrap;
+    }
+    .badge-blue  { background: var(--primary-light); color: var(--primary-dark); }
+    .badge-green { background: var(--success-light); color: var(--success); }
+    .badge-gray  { background: var(--gray-200); color: var(--gray-700); }
+
+    /* ---- Accordion (chi tiết phòng) ---- */
+    .accordion-item { border-bottom: 1px solid var(--gray-100); }
+    .accordion-header {
+      display: flex; align-items: center; gap: 12px;
+      padding: 12px 16px; cursor: pointer; user-select: none;
+      background: #fff; transition: background .15s; flex-wrap: wrap;
+    }
+    .accordion-header:hover { background: #f0f7ff; }
+    .accordion-arrow { color: var(--gray-500); transition: transform .2s; font-size: 11px; flex-shrink: 0; }
+    .accordion-header.open .accordion-arrow { transform: rotate(90deg); }
+    .accordion-body { display: none; padding: 0 16px 16px 44px; }
+    .accordion-body.open { display: block; }
+    .detail-grid { display: grid; grid-template-columns: 1fr 2fr; gap: 20px; margin-top: 10px; }
+    .detail-section h4 {
+      font-size: 12px; font-weight: 600; color: var(--gray-500);
+      margin-bottom: 8px; text-transform: uppercase; letter-spacing: .4px;
+    }
+    .detail-section table { font-size: 13px; }
+    .detail-section td, .detail-section th { padding: 5px 10px; }
+
+    /* ---- Student search/list ---- */
+    .search-bar {
+      background: #fff; padding: 14px 18px; border-bottom: 1px solid var(--gray-200);
+      display: flex; align-items: center; gap: 10px; border-radius: var(--radius) var(--radius) 0 0;
+    }
+    .search-bar input {
+      flex: 1; max-width: 380px; padding: 8px 14px;
+      border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px;
+    }
+    .search-bar input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .sv-group { border-bottom: 2px solid var(--primary-light); }
+    .sv-group-header {
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+      padding: 10px 16px; background: var(--primary-light); font-size: 14px; font-weight: 600;
+    }
+
+    /* ---- Base ---- */
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; background: var(--gray-50); color: var(--gray-900); line-height: 1.6; }
+    .header { background: linear-gradient(135deg, #1e40af 0%, #3b82f6 100%); color: #fff; padding: 32px 20px 28px; }
+    .header h1 { font-size: 26px; font-weight: 700; }
+    .header p  { font-size: 14px; opacity: .85; margin-top: 2px; }
+    .container { max-width: 1200px; margin: 0 auto; padding: 0 20px; }
+    .main { padding: 28px 0 48px; }
+    .section-title { font-size: 17px; font-weight: 600; margin-bottom: 14px; color: var(--gray-700); }
+    .mode-cards { display: grid; grid-template-columns: repeat(3, 1fr); gap: 16px; margin-bottom: 24px; }
+    .mode-card { background: #fff; border: 2px solid var(--gray-200); border-radius: var(--radius); padding: 22px 18px 18px; cursor: pointer; transition: border-color .2s, box-shadow .2s, background .2s; position: relative; display: flex; flex-direction: column; }
+    .mode-card:hover { border-color: var(--primary); box-shadow: var(--shadow-md); }
+    .mode-card.selected { border-color: var(--primary); background: var(--primary-light); box-shadow: 0 0 0 3px rgba(37,99,235,.15); }
+    .mode-card input[type="radio"] { position: absolute; opacity: 0; pointer-events: none; }
+    .mode-card .icon { font-size: 34px; margin-bottom: 10px; }
+    .mode-card h3 { font-size: 15px; font-weight: 600; margin-bottom: 6px; }
+    .mode-card p  { font-size: 13px; color: var(--gray-500); line-height: 1.45; flex: 1; }
+    .mode-card .check { position: absolute; top: 14px; right: 14px; width: 22px; height: 22px; border-radius: 50%; border: 2px solid var(--gray-300); display: flex; align-items: center; justify-content: center; transition: all .2s; }
+    .mode-card.selected .check { border-color: var(--primary); background: var(--primary); }
+    .mode-card.selected .check::after { content: '✓'; color: #fff; font-size: 13px; font-weight: 700; }
+    .settings-bar { background: #fff; border-radius: var(--radius); padding: 18px 22px; box-shadow: var(--shadow); margin-bottom: 24px; display: flex; align-items: end; gap: 18px; flex-wrap: wrap; }
+    .form-group { display: flex; flex-direction: column; }
+    .form-group label { font-size: 13px; font-weight: 500; color: var(--gray-700); margin-bottom: 5px; }
+    .form-group input { padding: 9px 12px; border: 1px solid var(--gray-300); border-radius: 8px; font-size: 14px; width: 160px; }
+    .form-group input:focus { outline: none; border-color: var(--primary); box-shadow: 0 0 0 3px rgba(37,99,235,.12); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 10px 24px; border: none; border-radius: 8px; font-size: 14px; font-weight: 600; cursor: pointer; transition: background .2s; }
+    .btn-primary { background: var(--primary); color: #fff; }
+    .btn-primary:hover { background: var(--primary-dark); }
+    .btn-secondary { background: #fff; color: var(--gray-700); border: 1px solid var(--gray-300); }
+    .btn-secondary:hover { border-color: var(--primary); color: var(--primary-dark); }
+    .checkbox { display: inline-flex; align-items: center; gap: 8px; font-size: 13px; color: var(--gray-700); user-select: none; }
+    .checkbox input { width: 16px; height: 16px; }
+    .download-bar { background: #fff; border-radius: var(--radius); padding: 16px 22px; box-shadow: var(--shadow); margin-bottom: 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; flex-wrap: wrap; }
+    .download-bar .hint { font-size: 13px; color: var(--gray-500); }
+    .download-actions { display: flex; gap: 10px; flex-wrap: wrap; }
+    .alert { padding: 13px 18px; border-radius: var(--radius); margin-bottom: 22px; font-size: 14px; line-height: 1.5; }
+    .alert-ok  { background: var(--success-light); border: 1px solid #bbf7d0; color: #15803d; }
+    .alert-err { background: var(--danger-light); border: 1px solid #fecaca; color: #b91c1c; }
+    .stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(140px, 1fr)); gap: 14px; margin-bottom: 26px; }
+    .stat-card { background: #fff; border-radius: var(--radius); padding: 18px 14px; box-shadow: var(--shadow); text-align: center; }
+    .stat-card .value { font-size: 30px; font-weight: 700; color: var(--primary); line-height: 1; }
+    .stat-card .label { font-size: 12px; color: var(--gray-500); margin-top: 6px; text-transform: uppercase; letter-spacing: .3px; }
+    .table-wrap { background: #fff; box-shadow: var(--shadow); overflow-x: auto; border-radius: 0 var(--radius) var(--radius) var(--radius); }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; }
+    th { background: var(--gray-100); font-weight: 600; text-align: left; padding: 11px 13px; white-space: nowrap; border-bottom: 2px solid var(--gray-200); }
+    td { padding: 9px 13px; border-bottom: 1px solid var(--gray-100); vertical-align: middle; }
+    tbody tr:hover { background: #f0f7ff; }
+    .empty-row { padding: 48px 20px; text-align: center; color: var(--gray-500); font-size: 15px; }
+    @media (max-width: 768px) {
+      .mode-cards { grid-template-columns: 1fr; }
+      .settings-bar { flex-direction: column; align-items: stretch; }
+      .form-group input { width: 100%; }
+      .detail-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+  <div class="header">
+    <div class="container">
+      <h1>🗓️ Tối ưu lịch thi</h1>
+      <p>Tự động xếp lịch thi tối ưu cho sinh viên và nhà trường</p>
+    </div>
+  </div>
+
+  <div class="container main">
+
+    <form method="post" action="/optimize" id="optimizeForm">
+
+      <!-- ⓪ Dữ liệu mẫu -->
+      <div class="section-title">⓪ Dữ liệu mẫu</div>
+      <div class="download-bar">
+        <div class="hint">Tạo nhanh dữ liệu mẫu để có thể bấm "Chạy tối ưu".</div>
+        <div class="download-actions">
+          <label class="checkbox" title="Xoá toàn bộ dữ liệu & lịch thi hiện có rồi tạo lại">
+            <input type="checkbox" name="reset_seed" value="1" /> Reset dữ liệu
+          </label>
+          <button class="btn btn-secondary" type="submit" formmethod="post" formaction="/seed">🧪 Tạo dữ liệu mẫu</button>
+        </div>
+      </div>
+
+      <!-- ① Chọn chế độ -->
+      <div class="section-title">① Chọn chế độ tối ưu</div>
+      <div class="mode-cards">
+        <label class="mode-card" id="card-spread">
+          <input type="radio" name="mode" value="spread" />
+          <div class="check"></div>
+          <div class="icon">📊</div>
+          <h3>Phân bố đều</h3>
+          <p>Tối đa khoảng cách giữa các môn thi của cùng sinh viên — giảm áp lực ôn tập, tránh thi dồn.</p>
+        </label>
+        <label class="mode-card" id="card-compact">
+          <input type="radio" name="mode" value="compact" />
+          <div class="check"></div>
+          <div class="icon">🏢</div>
+          <h3>Tối ưu phòng &amp; thời gian</h3>
+          <p>Gom thi vào ít ngày &amp; ít phòng nhất có thể — tiết kiệm chi phí tổ chức, giảm ca trống.</p>
+        </label>
+        <label class="mode-card" id="card-balanced">
+          <input type="radio" name="mode" value="balanced" />
+          <div class="check"></div>
+          <div class="icon">⚖️</div>
+          <h3>Cân bằng</h3>
+          <p>Kết hợp phân bố đều và tối ưu phòng — khoảng cách hợp lý mà vẫn gọn lịch.</p>
+        </label>
+      </div>
+
+      <!-- ② Tuỳ chỉnh & chạy -->
+      <div class="section-title">② Tuỳ chỉnh &amp; chạy</div>
+      <div class="settings-bar">
+        <div class="form-group">
+          <label for="min_gap_days">Khoảng cách tối thiểu giữa 2 môn thi (ngày)</label>
+          <input id="min_gap_days" name="min_gap_days" type="number" min="0" value="{{ min_gap_days }}" />
+        </div>
+        <button class="btn btn-primary" type="submit">🚀 Chạy tối ưu</button>
+      </div>
+
+      <!-- ③ Xuất Excel -->
+      <div class="section-title">③ Tải dữ liệu Excel</div>
+      <div class="download-bar">
+        <div class="hint">Tải file Excel cho từng chế độ (không ghi đè lịch đang lưu).</div>
+        <div class="download-actions">
+          <button class="btn btn-secondary" type="submit" formmethod="post" formaction="/export?mode=spread">⬇️ Phân bố đều</button>
+          <button class="btn btn-secondary" type="submit" formmethod="post" formaction="/export?mode=compact">⬇️ Tối ưu phòng</button>
+          <button class="btn btn-secondary" type="submit" formmethod="post" formaction="/export?mode=balanced">⬇️ Cân bằng</button>
+        </div>
+      </div>
+
+    </form>
+
+    <!-- Thông báo -->
+    {% if message %}
+    <div class="alert {{ 'alert-err' if is_error else 'alert-ok' }}">{{ message }}</div>
+    {% endif %}
+
+    <!-- Kết quả tối ưu -->
+    {% if stats %}
+    <div class="section-title">Kết quả tối ưu</div>
+    <div class="stats">
+      <div class="stat-card"><div class="value">{{ stats.created_lich }}</div><div class="label">Lịch thi</div></div>
+      <div class="stat-card"><div class="value">{{ stats.created_assignments }}</div><div class="label">Lượt sinh viên</div></div>
+      <div class="stat-card"><div class="value">{{ stats.total_exam_days }}</div><div class="label">Ngày thi</div></div>
+      <div class="stat-card"><div class="value">{{ stats.total_slots_used }}</div><div class="label">Ca thi sử dụng</div></div>
+    </div>
+    {% endif %}
+
+    <!-- Xuất Excel theo tab (3 tính năng) -->
+    <div class="section-title">Xuất Excel theo tab</div>
+    <div class="download-bar">
+      <div class="hint">Tải nhanh đúng dữ liệu đang hiển thị ở 3 tab bên dưới.</div>
+      <div class="download-actions">
+        <a class="btn btn-secondary" href="/export_view?view=schedule">⬇️ Lịch thi</a>
+        <a class="btn btn-secondary" href="/export_view?view=rooms">⬇️ Chi tiết phòng</a>
+        <a class="btn btn-secondary" href="/export_view?view=students">⬇️ Lịch theo SV</a>
+      </div>
+    </div>
+
+    <!-- ========= TABS ========= -->
+    <div class="tabs">
+      <button class="tab-btn active" onclick="switchTab('tab-schedule', this)">📋 Lịch thi</button>
+      <button class="tab-btn"        onclick="switchTab('tab-rooms',    this)">🏫 Chi tiết phòng</button>
+      <button class="tab-btn"        onclick="switchTab('tab-students', this)">👤 Lịch theo sinh viên</button>
+    </div>
+
+    <!-- ===== TAB 1: Lịch thi ===== -->
+    <div id="tab-schedule" class="tab-panel active">
+      <div class="table-wrap">
+        {% if schedule %}
+        <table>
+          <thead>
+            <tr>
+              <th>Mã lịch</th>
+              <th>Mã môn</th>
+              <th>Tên môn</th>
+              <th>Ngày thi</th>
+              <th>Ca</th>
+              <th>Giờ bắt đầu – kết thúc</th>
+              <th>Phòng thi</th>
+              <th>Thí sinh / Sức chứa</th>
+              <th>Giám thị</th>
+              <th>Ghi chú</th>
+            </tr>
+          </thead>
+          <tbody>
+            {% for row in schedule %}
+            {% set pct = row.PhanTramLap %}
+            <tr>
+              <td style="color:var(--gray-500)">{{ row.MaLich }}</td>
+              <td><span class="badge badge-blue">{{ row.MaMon }}</span></td>
+              <td>{{ row.TenMon }}</td>
+              <td>{{ row.NgayThi }}</td>
+              <td style="text-align:center">{{ row.ThuTuTrongNgay }}</td>
+              <td style="white-space:nowrap">{{ row.GioBatDau }} – {{ row.GioKetThuc }}</td>
+              <td><strong>{{ row.MaPhong }}</strong><span style="color:var(--gray-500);font-size:12px"> ({{ row.TenPhong }})</span></td>
+              <td>
+                <div class="cap-wrap">
+                  <div class="cap-bar">
+                    <div class="cap-fill {{ 'full' if pct >= 100 else ('warn' if pct >= 80 else '') }}"
+                         data-pct="{{ pct }}"
+                         style="width:0%"></div>
+                  </div>
+                  <span class="cap-text">{{ row.SoSinhVien }} / {{ row.SucChua }}</span>
+                </div>
+              </td>
+              <td>
+                {% set det = room_details.get(row.MaLich) %}
+                {% if det and det.giamthi %}
+                  <span class="badge badge-green">👤 {{ det.giamthi|length }}</span>
+                {% else %}
+                  <span class="badge badge-gray">Chưa có</span>
+                {% endif %}
+              </td>
+              <td style="color:var(--gray-500);font-size:13px">{{ row.GhiChu }}</td>
+            </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+        {% else %}
+        <div class="empty-row">Chưa có lịch thi. Chọn chế độ phía trên và nhấn <strong>Chạy tối ưu</strong>.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ===== TAB 2: Chi tiết phòng ===== -->
+    <div id="tab-rooms" class="tab-panel">
+      <div class="table-wrap">
+        {% if schedule %}
+          {% for row in schedule %}
+          {% set det = room_details.get(row.MaLich) %}
+          <div class="accordion-item">
+            <div class="accordion-header" onclick="toggleAcc(this)">
+              <span class="accordion-arrow">▶</span>
+              <span class="badge badge-blue" style="min-width:52px;justify-content:center">#{{ row.MaLich }}</span>
+              <strong>{{ row.MaMon }} – {{ row.TenMon }}</strong>
+              <span style="color:var(--gray-500);font-size:13px">
+                {{ row.NgayThi }} · Ca {{ row.ThuTuTrongNgay }} ({{ row.GioBatDau }}–{{ row.GioKetThuc }}) · {{ row.MaPhong }}
+              </span>
+              <span style="margin-left:auto">
+                {% set pct = row.PhanTramLap %}
+                <div class="cap-wrap">
+                  <div class="cap-bar" style="width:70px">
+                    <div class="cap-fill {{ 'full' if pct >= 100 else ('warn' if pct >= 80 else '') }}"
+                         data-pct="{{ pct }}"
+                         style="width:0%"></div>
+                  </div>
+                  <span class="cap-text">{{ row.SoSinhVien }}/{{ row.SucChua }}</span>
+                </div>
+              </span>
+            </div>
+            <div class="accordion-body">
+              {% if det %}
+              <div class="detail-grid">
+                <div class="detail-section">
+                  <h4>👤 Giám thị ({{ det.giamthi|length }} người)</h4>
+                  {% if det.giamthi %}
+                  <table>
+                    <thead><tr><th>#</th><th>Họ tên</th><th>Đơn vị</th></tr></thead>
+                    <tbody>
+                      {% for gt in det.giamthi %}
+                      <tr>
+                        <td style="color:var(--gray-500)">{{ gt.ThuTu }}</td>
+                        <td>{{ gt.HoTen }}</td>
+                        <td style="color:var(--gray-500)">{{ gt.DonVi }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  {% else %}<p style="color:var(--gray-500);font-size:13px">Chưa phân công giám thị.</p>{% endif %}
+                </div>
+                <div class="detail-section">
+                  <h4>🎓 Danh sách thí sinh ({{ det.sinhvien|length }} người)</h4>
+                  {% if det.sinhvien %}
+                  <table>
+                    <thead><tr><th>STT</th><th>Mã SV</th><th>Họ tên</th><th>Lớp</th></tr></thead>
+                    <tbody>
+                      {% for sv in det.sinhvien %}
+                      <tr>
+                        <td style="color:var(--gray-500)">{{ loop.index }}</td>
+                        <td>{{ sv.MaSinhVien }}</td>
+                        <td>{{ sv.HoTen }}</td>
+                        <td style="color:var(--gray-500)">{{ sv.Lop }}</td>
+                      </tr>
+                      {% endfor %}
+                    </tbody>
+                  </table>
+                  {% else %}<p style="color:var(--gray-500);font-size:13px">Chưa có sinh viên.</p>{% endif %}
+                </div>
+              </div>
+              {% else %}
+              <p style="color:var(--gray-500);font-size:13px;padding:8px 0">Chưa có chi tiết giám thị / thí sinh.</p>
+              {% endif %}
+            </div>
+          </div>
+          {% endfor %}
+        {% else %}
+        <div class="empty-row">Chưa có lịch thi.</div>
+        {% endif %}
+      </div>
+    </div>
+
+    <!-- ===== TAB 3: Lịch theo sinh viên ===== -->
+    <div id="tab-students" class="tab-panel">
+      <div class="table-wrap">
+        {% if student_schedules %}
+        <div class="search-bar">
+          <input type="text" id="svSearch"
+                 placeholder="🔍 Tìm theo mã SV hoặc họ tên..."
+                 oninput="filterSV(this.value)" />
+          <span id="svCount" style="font-size:13px;color:var(--gray-500)">
+            {{ student_schedules|length }} sinh viên
+          </span>
+        </div>
+        <div id="svList">
+          {% for sv in student_schedules %}
+          <div class="sv-group"
+               data-masv="{{ sv.MaSinhVien|lower }}"
+               data-hoten="{{ sv.HoTen|lower }}">
+            <div class="sv-group-header">
+              <span class="badge badge-blue">{{ sv.MaSinhVien }}</span>
+              <span>{{ sv.HoTen }}</span>
+              <span style="color:var(--gray-500);font-weight:400;font-size:13px">{{ sv.Lop }}</span>
+              <span class="badge badge-gray" style="margin-left:auto">{{ sv.exams|length }} môn thi</span>
+            </div>
+            <table>
+              <thead>
+                <tr>
+                  <th>Mã lịch</th>
+                  <th>Môn thi</th>
+                  <th>Ngày thi</th>
+                  <th>Ca</th>
+                  <th>Giờ</th>
+                  <th>Phòng</th>
+                </tr>
+              </thead>
+              <tbody>
+                {% for ex in sv.exams %}
+                <tr>
+                  <td style="color:var(--gray-500)">{{ ex.MaLich }}</td>
+                  <td><span class="badge badge-blue">{{ ex.MaMon }}</span> {{ ex.TenMon }}</td>
+                  <td>{{ ex.NgayThi }}</td>
+                  <td style="text-align:center">{{ ex.ThuTuTrongNgay }}</td>
+                  <td style="white-space:nowrap">{{ ex.GioBatDau }} – {{ ex.GioKetThuc }}</td>
+                  <td><strong>{{ ex.MaPhong }}</strong><span style="color:var(--gray-500);font-size:12px"> ({{ ex.TenPhong }})</span></td>
+                </tr>
+                {% endfor %}
+              </tbody>
+            </table>
+          </div>
+          {% endfor %}
+        </div>
+        {% else %}
+        <div class="empty-row">Chưa có dữ liệu sinh viên.</div>
+        {% endif %}
+      </div>
+    </div>
+
+  </div><!-- /container -->
+
+  <script>
+    /* ---- Chuyển tab ---- */
+    function switchTab(id, btn) {
+      document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      document.getElementById(id).classList.add('active');
+      btn.classList.add('active');
+    }
+
+    /* ---- Accordion chi tiết phòng ---- */
+    function toggleAcc(header) {
+      const body = header.nextElementSibling;
+      const open = header.classList.toggle('open');
+      body.classList.toggle('open', open);
+    }
+
+    /* ---- Tìm kiếm sinh viên ---- */
+    function filterSV(q) {
+      q = q.toLowerCase().trim();
+      let visible = 0;
+      document.querySelectorAll('#svList .sv-group').forEach(g => {
+        const match = !q || g.dataset.masv.includes(q) || g.dataset.hoten.includes(q);
+        g.style.display = match ? '' : 'none';
+        if (match) visible++;
+      });
+      document.getElementById('svCount').textContent = visible + ' sinh viên';
+    }
+
+    /* ---- Chọn thẻ chế độ ---- */
+    const cards    = document.querySelectorAll('.mode-card');
+    const radios   = document.querySelectorAll('input[name="mode"]');
+    const gapInput = document.getElementById('min_gap_days');
+    const defaultGaps = { spread: 1, compact: 0, balanced: 1 };
+
+    function selectCard(value) {
+      cards.forEach(c => c.classList.remove('selected'));
+      const card = document.getElementById('card-' + value);
+      if (card) card.classList.add('selected');
+    }
+
+    radios.forEach(r => {
+      r.addEventListener('change', () => {
+        selectCard(r.value);
+        if (r.value in defaultGaps) gapInput.value = defaultGaps[r.value];
+      });
+    });
+
+    (function restore() {
+      const saved = '{{ mode }}' || 'balanced';
+      const radio = document.querySelector('input[name="mode"][value="' + saved + '"]');
+      if (radio) { radio.checked = true; selectCard(saved); }
+    })();
+
+    function clampNumber(value, min, max) {
+      const n = Number(value);
+      if (Number.isNaN(n)) return min;
+      return Math.min(max, Math.max(min, n));
+    }
+
+    function applyCapacityBars() {
+      document.querySelectorAll('.cap-fill[data-pct]').forEach(el => {
+        const pct = clampNumber(el.getAttribute('data-pct'), 0, 100);
+        el.style.width = pct + '%';
+      });
+    }
+
+    applyCapacityBars();
+  </script>
+
+</body>
+</html>
