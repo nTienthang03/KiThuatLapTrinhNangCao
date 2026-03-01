@@ -36,3 +36,9 @@ Greedy đơn giản:
 - Xếp môn có nhiều SV trước
 - Chọn ca sớm nhất thoả không xung đột SV và đủ sức chứa phòng rảnh
 - Chia SV theo nhiều phòng trong cùng ca
+
+
+
+
+
+
